@@ -3,45 +3,80 @@ import logging
 from azure.functions.decorators.core import DataType
 import random
 import uuid
+from analytics import analytics_bp
+from generate_data import generate_data_bp
+from get_stats import get_stats_bp
+from delete_data import delete_data_bp
+from regularly_generate_data import regularly_generate_data_bp
+from regular_db_clearence import regular_db_clearence_bp
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+app.register_functions(analytics_bp)
+app.register_functions(generate_data_bp)
+app.register_functions(get_stats_bp)
+app.register_functions(delete_data_bp)
+app.register_functions(regularly_generate_data_bp) 
+app.register_functions(regular_db_clearence_bp) 
 
-@app.function_name(name='generate_data')
-@app.route(route="generate_data", auth_level=func.AuthLevel.ANONYMOUS)
+
+
+#takes data and stores it in the database
+@app.function_name(name='store_data')
+@app.route(route="store_data", auth_level=func.AuthLevel.ANONYMOUS, methods=["POST"])
 @app.generic_output_binding(arg_name="sensorData", type='sql', CommandText="dbo.sensorData", ConnectionStringSetting="SqlConnectionString", data_type=DataType.STRING)
-def generate_data(req: func.HttpRequest, sensorData: func.Out[func.SqlRow]) -> func.HttpResponse:
+def store_data(req: func.HttpRequest, sensorData: func.Out[func.SqlRow]) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
-    name = req.params.get('name')
-    if not name:
+    #getting the data from the request
+    sensor = req.params.get('sensorID')
+    if not sensor:
         try:
             req_body = req.get_json()
         except ValueError:
             pass
         else:
-            name = req_body.get('name')
-
-    #generating the data and storing it in the database
-    sensor_data_generated = []
-    sensor_data_generated_sql = []
-    for i in range(1, 21):
-        tempurature = random.randint(8, 15)
-        wind_speed = random.randint(15, 25)
-        humidity = random.randint(40, 70)
-        co2 = random.randint(500, 1500)
-        sensor_data_generated_sql.append(func.SqlRow({"ID" : str(uuid.uuid4()), "sensorID" : i, "Tempurature" : tempurature, "Wind" : wind_speed, "R.Humidity" : humidity, "CO2" : co2}))
-        sensor_data_generated.append([i, tempurature, wind_speed, humidity, co2])
+            sensor = req_body.get('sensorID')
     
-    sensorData.set(func.SqlRowList(sensor_data_generated_sql))
+    tempurature = req.params.get('Tempurature')
+    if not tempurature:
+        try:
+            req_body = req.get_json()
+        except ValueError:
+            pass
+        else:
+            tempurature = req_body.get('Tempurature')
     
-    output_string = ""
-    for i in range(0, 20):
-        output_string = output_string + f"sensorID: {sensor_data_generated[i][0]}, temp: {sensor_data_generated[i][1]}, wind: {sensor_data_generated[i][2]}, humidity: {sensor_data_generated[i][3]}, co2: {sensor_data_generated[i][4]}\n"
+    wind = req.params.get('Wind')
+    if not wind:
+        try:
+            req_body = req.get_json()
+        except ValueError:
+            pass
+        else:
+            wind = req_body.get('Wind')
+    
+    humidity = req.params.get('R.Humidity')
+    if not humidity:
+        try:
+            req_body = req.get_json()
+        except ValueError:
+            pass
+        else:
+            humidity = req_body.get('R.Humidity')
+    
+    co2 = req.params.get('CO2')
+    if not co2:
+        try:
+            req_body = req.get_json()
+        except ValueError:
+            pass
+        else:
+            co2 = req_body.get('CO2')
+    
+    #Adding the data to the database
+    sensorData.set(func.SqlRow({"ID" : str(uuid.uuid4()), "sensorID" : sensor, "Tempurature" : tempurature, "Wind" : wind, "R.Humidity" : humidity, "CO2" : co2}))
 
-    if name:
-        return func.HttpResponse(f"Hello, {name}. This HTTP triggered function executed successfully.\n" + output_string)
-    else:
-        return func.HttpResponse(
-             "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response. \n" + output_string,
-             status_code=200
-        )
+    return func.HttpResponse(
+        f"The following record was added to the data base:\nsensorID : {sensor}, Tempurature : {tempurature}, Wind : {wind}, R.Humidity : {humidity}, CO2 : {co2}",
+        status_code=200)
+    
