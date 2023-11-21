@@ -4,7 +4,7 @@ import time
 import matplotlib.pyplot as plt
 import math
 
-generate_data_url = "https://distributedsystemscoursework2.azurewebsites.net/api/generate_data"
+generate_data_url = "https://distributedsystemscoursework2.azurewebsites.net/api/generate_data_scalability_test"
 reset_table_url = "https://distributedsystemscoursework2.azurewebsites.net/api/delete_data"
 
 def main():
